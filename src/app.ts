@@ -39,7 +39,7 @@ function loadConfig(): Config {
 
 const config = loadConfig();
 
-export const githubApp = new App({
+export const githubApp: App = new App({
   appId: config.githubAppId,
   privateKey: config.githubPrivateKey,
   webhooks: {
