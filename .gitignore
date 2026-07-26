@@ -4,3 +4,5 @@ dist/
 *.pem
 *.p8
 .next
+.vercel
+.env*
