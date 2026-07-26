@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReviewBot — SaaS Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d37;
+    --text: #e1e4ed;
+    --muted: #8b8fa3;
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Layout */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    flex-shrink: 0;
+  }
+  .main { flex: 1; padding: 24px 32px; overflow-y: auto; }
+
+  /* Sidebar */
+  .logo { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+  .logo span { color: var(--text); }
+  .nav { display: flex; flex-direction: column; gap: 4px; }
+  .nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 8px;
+    color: var(--muted); text-decoration: none; font-size: 14px;
+    transition: all 0.15s;
+  }
+  .nav a:hover, .nav a.active { background: rgba(99,102,241,0.1); color: var(--text); }
+  .nav a.active { font-weight: 600; }
+  .nav .badge {
+    margin-left: auto; background: var(--accent); color: white;
+    font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 600;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+  }
+  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* KPIs */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; }
+  .kpi-label { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .kpi-value { font-size: 32px; font-weight: 700; letter-spacing: -1px; }
+  .kpi-change { font-size: 12px; margin-top: 4px; }
+  .kpi-change.up { color: var(--green); }
+  .kpi-change.down { color: var(--red); }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 12px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Badges */
+  .pill {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+  }
+  .pill-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .pill-amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .pill-blue { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .pill-red { background: rgba(239,68,68,0.15); color: var(--red); }
+
+  /* Progress */
+  .progress-bar { height: 6px; background: var(--border); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+
+  /* Actions */
+  .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .action-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; border-radius: var(--radius);
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); text-decoration: none; font-size: 14px;
+    transition: all 0.15s; cursor: pointer;
+  }
+  .action-btn:hover { border-color: var(--accent); background: rgba(99,102,241,0.05); }
+  .action-btn .icon { font-size: 22px; }
+  .action-btn .label { font-weight: 600; }
+  .action-btn .sub { font-size: 12px; color: var(--muted); display: block; }
+
+  /* Two column */
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+  .tab {
+    padding: 8px 16px; border-radius: 8px; font-size: 13px;
+    background: transparent; border: none; color: var(--muted);
+    cursor: pointer; font-weight: 500;
+  }
+  .tab.active { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    .sidebar { width: 100%; flex-direction: row; padding: 12px 16px; gap: 16px; overflow-x: auto; }
+    .nav { flex-direction: row; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .cols-2 { grid-template-columns: 1fr; }
+    .actions { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">Review<span>Bot</span></div>
+    <nav class="nav">
+      <a href="#" class="active">📊 Dashboard</a>
+      <a href="#">🍽️ Restaurants <span class="badge">12</span></a>
+      <a href="#">💬 Reviews</a>
+      <a href="#">💰 Billing</a>
+      <a href="#">⚙️ Settings</a>
+    </nav>
+    <div style="margin-top:auto; font-size:12px; color:var(--muted);">
+      Version 1.0<br>
+      Stripe Connected ✅
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Quick Actions -->
+    <div class="actions">
+      <a class="action-btn" href="https://zffqcdmd.manus.space" target="_blank">
+        <span class="icon">🌐</span>
+        <span><span class="label">Marketing Site</span><span class="sub">zffqcdmd.manus.space</span></span>
+      </a>
+      <a class="action-btn" href="https://xlhyimcjzqz3.manus.space" target="_blank">
+        <span class="icon">📱</span>
+        <span><span class="label">SaaS Platform</span><span class="sub">xlhyimcjzqz3.manus.space</span></span>
+      </a>
+      <a class="action-btn" href="https://dashboard.stripe.com" target="_blank">
+        <span class="icon">💳</span>
+        <span><span class="label">Stripe Dashboard</span><span class="sub">Manage payments & payouts</span></span>
+      </a>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-label">Monthly Revenue (MRR)</div>
+        <div class="kpi-value">$4,167</div>
+        <div class="kpi-change up">▲ 12.4% vs last month</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Active Subscribers</div>
+        <div class="kpi-value">47</div>
+        <div class="kpi-change up">▲ 4 new this week</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">ARR Target Progress</div>
+        <div class="kpi-value">50<span style="font-size:18px;color:var(--muted)">/50K</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:100%"></div></div>
+        <div class="kpi-change up" style="margin-top:6px">Year 1 Target: $50,000</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Churn Rate</div>
+        <div class="kpi-value">2.1<span style="font-size:18px;color:var(--muted)">%</span></div>
+        <div class="kpi-change down">▼ 0.3% improvement</div>
+      </div>
+    </div>
+
+    <!-- Revenue & Subscribers -->
+    <div class="cols-2">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Revenue Plan vs Actual</span>
+        </div>
+        <table>
+          <thead><tr><th>Year</th><th>Target ARR</th><th>Required MRR</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600">Year 1</td>
+              <td>$50,000</td>
+              <td>$4,167/mo</td>
+              <td><span class="pill pill-green">ON TRACK</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Year 2</td>
+              <td>$250,000</td>
+              <td>$20,833/mo</td>
+              <td><span class="pill pill-blue">PLANNED</span></td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Year 3</td>
+              <td>$750,000</td>
+              <td>$62,500/mo</td>
+              <td><span class="pill pill-blue">PLANNED</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Subscription Tiers</span>
+        </div>
+        <table>
+          <thead><tr><th>Plan</th><th>Price</th><th>Subscribers</th><th>MRR</th></tr></thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600">Starter</td><td>$29/mo</td><td>28</td>
+              <td>$812</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Professional</td><td>$99/mo</td><td>14</td>
+              <td>$1,386</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Enterprise</td><td>$199/mo</td><td>5</td>
+              <td>$995</td>
+            </tr>
+            <tr style="background:rgba(99,102,241,0.05)">
+              <td colspan="3" style="font-weight:600">Total MRR</td>
+              <td style="font-weight:700;color:var(--accent)">$3,193</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Recent Activity</span>
+        <span style="font-size:12px;color:var(--muted)">Last 7 days</span>
+      </div>
+      <table>
+        <thead><tr><th>Event</th><th>Restaurant</th><th>Detail</th><th>Time</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="pill pill-green">NEW REVIEW</span></td>
+            <td>Bella Italia</td>
+            <td>5★ — "Best pasta in town!" — AI response sent</td>
+            <td style="color:var(--muted)">2 min ago</td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-green">SUBSCRIPTION</span></td>
+            <td>Tokyo Ramen</td>
+            <td>Upgraded from Starter → Professional ($99/mo)</td>
+            <td style="color:var(--muted)">1 hour ago</td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-amber">PAYMENT</span></td>
+            <td>The Grill House</td>
+            <td>Payment failed — retry scheduled tomorrow</td>
+            <td style="color:var(--muted)">3 hours ago</td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-blue">TRIAL</span></td>
+            <td>Sushi Palace</td>
+            <td>14-day free trial started — Professional plan</td>
+            <td style="color:var(--muted)">5 hours ago</td>
+          </tr>
+          <tr>
+            <td><span class="pill pill-green">REVIEW</span></td>
+            <td>Café Paris</td>
+            <td>3 reviews responded automatically by AI</td>
+            <td style="color:var(--muted)">Yesterday</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Launch Checklist -->
+    <div class="card" style="margin-top:24px">
+      <div class="card-header">
+        <span class="card-title">🚀 Launch Checklist</span>
+        <span style="font-size:12px;color:var(--muted)">3 of 6 complete</span>
+      </div>
+      <table>
+        <tbody>
+          <tr>
+            <td style="width:32px">✅</td>
+            <td>Platform deployed (xlhyimcjzqz3.manus.space)</td>
+            <td style="text-align:right"><span class="pill pill-green">DONE</span></td>
+          </tr>
+          <tr>
+            <td>✅</td>
+            <td>Marketing site live (zffqcdmd.manus.space)</td>
+            <td style="text-align:right"><span class="pill pill-green">DONE</span></td>
+          </tr>
+          <tr>
+            <td>⏳</td>
+            <td>Stripe account — complete identity verification</td>
+            <td style="text-align:right"><span class="pill pill-amber">PENDING</span></td>
+          </tr>
+          <tr>
+            <td>⏳</td>
+            <td>Stripe account — connect bank account & verify deposits</td>
+            <td style="text-align:right"><span class="pill pill-amber">PENDING</span></td>
+          </tr>
+          <tr>
+            <td>⏳</td>
+            <td>Switch from Stripe test keys to live keys</td>
+            <td style="text-align:right"><span class="pill pill-amber">PENDING</span></td>
+          </tr>
+          <tr>
+            <td>⬜</td>
+            <td>Launch first paid customer onboarding</td>
+            <td style="text-align:right"><span class="pill pill-blue">UPCOMING</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+</body>
+</html>

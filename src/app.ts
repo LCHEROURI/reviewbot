@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { App } from "@octokit/app";
 import { Octokit } from "@octokit/rest";
 import express, { Request, Response } from "express";
@@ -74,6 +76,23 @@ export function createApp() {
   const MAX_BODY_SIZE = 1_048_576; // 1 MB
 
   server.get("/", (_request: Request, response: Response) => {
+    response.redirect("/dashboard");
+  });
+
+  server.get("/dashboard", (_request: Request, response: Response) => {
+    const paths = [
+      path.join(__dirname, "..", "dashboard.html"),
+      path.join(__dirname, "..", "..", "dashboard.html"),
+      path.join(process.cwd(), "dashboard.html"),
+      path.join(process.cwd(), "dist", "dashboard.html"),
+    ];
+    for (const p of paths) {
+      if (fs.existsSync(p)) {
+        response.sendFile(p);
+        return;
+      }
+    }
+    // Fallback: inline redirect to health for debugging
     response.redirect("/health");
   });
 

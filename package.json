@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/ api/ --ext .ts",
     "lint:fix": "eslint src/ api/ --ext .ts --fix",
-    "vercel-build": "tsc"
+    "vercel-build": "tsc && cp dashboard.html dist/"
   },
   "engines": {
     "node": ">=18"
