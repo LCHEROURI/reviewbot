@@ -16,15 +16,17 @@ interface Config {
   githubWebhookSecret: string;
 }
 
-function loadConfig(): Config {
+let _githubApp: App | null = null;
+let _configError: string | null = null;
+
+function getConfig(): Config | null {
   const missing = REQUIRED_ENV_VARS.filter(
     (name) => process.env[name] === undefined || process.env[name] === ""
   );
 
   if (missing.length > 0) {
-    throw new Error(
-      `Missing required environment variables: ${missing.join(", ")}`
-    );
+    _configError = `Missing required environment variables: ${missing.join(", ")}`;
+    return null;
   }
 
   return {
@@ -37,26 +39,36 @@ function loadConfig(): Config {
   };
 }
 
-const config = loadConfig();
+function getGithubApp(): App | null {
+  if (_githubApp) return _githubApp;
+  if (_configError) return null;
 
-export const githubApp: App = new App({
-  appId: config.githubAppId,
-  privateKey: config.githubPrivateKey,
-  webhooks: {
-    secret: config.githubWebhookSecret,
-  },
-  Octokit,
-});
+  const config = getConfig();
+  if (!config) return null;
+
+  _githubApp = new App({
+    appId: config.githubAppId,
+    privateKey: config.githubPrivateKey,
+    webhooks: {
+      secret: config.githubWebhookSecret,
+    },
+    Octokit,
+  });
+
+  return _githubApp;
+}
 
 export function createApp() {
   const server = express();
 
-  // Body size limit: reject payloads over 1 MB
   const MAX_BODY_SIZE = 1_048_576; // 1 MB
 
   server.get("/health", (_request: Request, response: Response) => {
+    const app = getGithubApp();
     response.status(200).json({
-      status: "ok",
+      status: app ? "ok" : "degraded",
+      configured: !!app,
+      message: app ? "Ready to review" : _configError ?? "Not configured",
       timestamp: new Date().toISOString(),
     });
   });
@@ -65,12 +77,18 @@ export function createApp() {
     "/webhook",
     express.raw({ type: "*/*", limit: MAX_BODY_SIZE }),
     (request: Request, response: Response) => {
+      const app = getGithubApp();
+      if (!app) {
+        console.error("Cannot process webhook — app not configured");
+        response.sendStatus(503);
+        return;
+      }
+
       const body = Buffer.isBuffer(request.body)
         ? request.body.toString("utf8")
         : String(request.body);
 
-      // Fire-and-forget the review; respond immediately to GitHub
-      handleWebhook(githubApp, body, request.headers).catch(
+      handleWebhook(app, body, request.headers).catch(
         (error: unknown) => {
           console.error("Webhook handler failed", error);
         }
