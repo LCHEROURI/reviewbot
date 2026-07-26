@@ -21,7 +21,7 @@ let _configError: string | null = null;
 
 function getConfig(): Config | null {
   const missing = REQUIRED_ENV_VARS.filter(
-    (name) => process.env[name] === undefined || process.env[name] === ""
+    (name) => !process.env[name] || process.env[name]!.trim() === ""
   );
 
   if (missing.length > 0) {
@@ -29,33 +29,43 @@ function getConfig(): Config | null {
     return null;
   }
 
+  const rawKey = process.env["GITHUB_PRIVATE_KEY"]!.trim();
+  // Support both \n literals (from CLI copy-paste) and actual newlines
+  const privateKey = rawKey.includes("\\n")
+    ? rawKey.replace(/\\n/g, "\n")
+    : rawKey;
+
   return {
-    githubAppId: process.env["GITHUB_APP_ID"]!,
-    githubPrivateKey: process.env["GITHUB_PRIVATE_KEY"]!.replace(
-      /\\n/g,
-      "\n"
-    ),
-    githubWebhookSecret: process.env["GITHUB_WEBHOOK_SECRET"]!,
+    githubAppId: process.env["GITHUB_APP_ID"]!.trim(),
+    githubPrivateKey: privateKey,
+    githubWebhookSecret: process.env["GITHUB_WEBHOOK_SECRET"]!.trim(),
   };
 }
 
 function getGithubApp(): App | null {
   if (_githubApp) return _githubApp;
-  if (_configError) return null;
 
   const config = getConfig();
   if (!config) return null;
 
-  _githubApp = new App({
-    appId: config.githubAppId,
-    privateKey: config.githubPrivateKey,
-    webhooks: {
-      secret: config.githubWebhookSecret,
-    },
-    Octokit,
-  });
-
-  return _githubApp;
+  try {
+    _githubApp = new App({
+      appId: config.githubAppId,
+      privateKey: config.githubPrivateKey,
+      webhooks: {
+        secret: config.githubWebhookSecret,
+      },
+      Octokit,
+    });
+    _configError = null;
+    return _githubApp;
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    _configError = `Failed to initialise GitHub App: ${msg}`;
+    console.error(_configError);
+    _githubApp = null;
+    return null;
+  }
 }
 
 export function createApp() {
