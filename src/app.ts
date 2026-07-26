@@ -90,7 +90,7 @@ export function createApp() {
   server.post(
     "/webhook",
     express.raw({ type: "*/*", limit: MAX_BODY_SIZE }),
-    (request: Request, response: Response) => {
+    async (request: Request, response: Response) => {
       const app = getGithubApp();
       if (!app) {
         console.error("Cannot process webhook — app not configured");
@@ -102,11 +102,12 @@ export function createApp() {
         ? request.body.toString("utf8")
         : String(request.body);
 
-      handleWebhook(app, body, request.headers).catch(
-        (error: unknown) => {
-          console.error("Webhook handler failed", error);
-        }
-      );
+      // Wait for review to complete so Vercel doesn't terminate mid-flight
+      try {
+        await handleWebhook(app, body, request.headers);
+      } catch (error: unknown) {
+        console.error("Webhook handler failed", error);
+      }
 
       response.sendStatus(200);
     }
