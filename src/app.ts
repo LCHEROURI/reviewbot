@@ -73,6 +73,10 @@ export function createApp() {
 
   const MAX_BODY_SIZE = 1_048_576; // 1 MB
 
+  server.get("/", (_request: Request, response: Response) => {
+    response.redirect("/health");
+  });
+
   server.get("/health", (_request: Request, response: Response) => {
     const app = getGithubApp();
     response.status(200).json({
